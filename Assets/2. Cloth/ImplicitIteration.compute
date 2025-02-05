@@ -1,6 +1,6 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
-#pragma enable_d3d11_debug_symbols
+//#pragma enable_d3d11_debug_symbols
 //#pragma pack_matrix(row_major)
 
 struct AdjacencyData {
@@ -23,9 +23,9 @@ inline float3 Get_Gradient(int id, float3 X, float3 X_hat) {
     float3 G = (X - X_hat) / dt / dt - float3(0, -9.81, 0);
 
     for (uint i = 0; i < 16; i++) {
-        int k = VerticesAdjacent[id].Id[i / 4][i % 4];
-        float L = VerticesAdjacent[id].Length[i / 4][i % 4];
-        if (k == -1 || L == 0) continue;
+        int k = VerticesAdjacency[id].Id[i % 4][i / 4];
+        float L = VerticesAdjacency[id].Length[i % 4][i / 4];
+        if (k == - 1 || L == 0) break;
 
         float3 t = X - VerticesPositionIn[k];
         float3 f = spring_k * (1 - L / length(t)) * t;
