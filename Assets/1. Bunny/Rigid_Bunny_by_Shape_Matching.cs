@@ -14,6 +14,9 @@ public class Rigid_Bunny_by_Shape_Matching : MonoBehaviour
 	// Start is called before the first frame update
 	void Start()
 	{
+		// Set Fixed Delta Time
+		Time.fixedDeltaTime = 0.015f;
+
 		Mesh mesh = GetComponent<MeshFilter>().mesh;
 		V = new Vector3[mesh.vertices.Length];
 		X = mesh.vertices;

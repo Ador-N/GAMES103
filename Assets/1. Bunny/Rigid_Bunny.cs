@@ -200,7 +200,9 @@ public class Rigid_Bunny : MonoBehaviour
 		transform.SetPositionAndRotation(x, q);
 
 		speed = v.magnitude;
-		var wi = transform.TransformVector(w);
-		energy = 0.5f * mass * v.sqrMagnitude + 0.5f * Vector3.Dot(wi, Utils.Multiply(I_ref, wi)) - mass * Physics.gravity.y * x.y;
+		var wi = transform.InverseTransformDirection(w);
+		energy = 0.5f * mass * v.sqrMagnitude
+			+ 0.5f * Vector3.Dot(wi, I_ref.MultiplyVector(wi))
+			- mass * Physics.gravity.y * x.y;
 	}
 }
