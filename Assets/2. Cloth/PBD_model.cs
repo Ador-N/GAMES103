@@ -4,6 +4,7 @@ using System.Collections;
 public class PBD_model : MonoBehaviour
 {
 
+	public int iterationCount = 32;
 	float dt = 0.0333f;
 	float damping = 0.99f;
 	int[] E;
@@ -140,7 +141,27 @@ public class PBD_model : MonoBehaviour
 		Vector3[] vertices = mesh.vertices;
 
 		// Apply PBD here.
-		//...
+		Vector3[] sum_x = new Vector3[vertices.Length];
+		int[] sum_n = new int[vertices.Length];
+		for (int e = 0; e < L.Length; e++)
+		{
+			int i = E[e * 2 + 0];
+			int j = E[e * 2 + 1];
+			Vector3 n = (vertices[i] - vertices[j]).normalized;
+			sum_x[i] += 0.5f * (vertices[i] + vertices[j] + L[e] * n);
+			sum_x[j] += 0.5f * (vertices[i] + vertices[j] - L[e] * n);
+			sum_n[i]++;
+			sum_n[j]++;
+		}
+
+		for (int i = 0; i < vertices.Length; i++)
+		{
+			if (i == 0 || i == 20) continue;
+			Vector3 old_x = vertices[i];
+			vertices[i] = (0.2f * vertices[i] + sum_x[i]) / (0.2f + sum_n[i]);
+			V[i] += (vertices[i] - old_x) / dt;
+		}
+
 		mesh.vertices = vertices;
 	}
 
@@ -182,19 +203,18 @@ public class PBD_model : MonoBehaviour
 		{
 			if (i == 0 || i == 20) continue;
 			// Initial Setup
-			//...
+			V[i] *= damping;
+			V[i] += Physics.gravity * dt;
+			X[i] += V[i] * dt;
 		}
 		mesh.vertices = X;
 
-		for (int l = 0; l < 32; l++)
+		for (int l = 0; l < iterationCount; l++)
 			Strain_Limiting();
 
 		Collision_Handling();
-
 		mesh.RecalculateNormals();
-
 	}
-
 
 }
 
