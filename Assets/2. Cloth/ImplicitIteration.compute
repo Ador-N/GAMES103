@@ -3,7 +3,7 @@
 #pragma enable_d3d11_debug_symbols
 //#pragma pack_matrix(row_major)
 
-struct AdjacentData {
+struct AdjacencyData {
     int4x4 Id;
     float4x4 Length;
 };
@@ -12,10 +12,10 @@ StructuredBuffer<float3> VerticesPositionIn;
 StructuredBuffer<float3> VerticesPositionInHat;
 RWStructuredBuffer<float3> VerticesPositionInOld;
 RWStructuredBuffer<float3> VerticesPositionOut;
-/*uniform */StructuredBuffer<AdjacentData> VerticesAdjacent;
+StructuredBuffer<AdjacencyData> VerticesAdjacency;
 
 float omega = 1, dt = 0.015f, spring_k = 8000;
-float inv_H = 2.743902e-05f; //  1 / (1 / dt / dt + 4 * spring_k)
+float inv_H = 2.743902e-05f; // 1 / (1 / dt / dt + 4 * spring_k)
 
 inline float3 Get_Gradient(int id, float3 X, float3 X_hat) {
     if (id == 0 || id == 20)

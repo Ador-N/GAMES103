@@ -15,9 +15,9 @@ public class implicit_model_parallel : MonoBehaviour
 	int[] E;
 	float[] L;
 	Vector3[] V;
-	AdjacentData[] vertices;
+	AdjacencyData[] vertices;
 	Transform sphere;
-	ComputeBuffer adjacentDataBuffer, positionOldBuffer, positionHatBuffer;
+	ComputeBuffer adjacencyDataBuffer, positionOldBuffer, positionHatBuffer;
 	ComputeBuffer[] positionBuffer = new ComputeBuffer[2];
 	// Avoid repeating using string to set buffer which causes GC.
 	int omegaId, verticesPositionInId, verticesPositionOutId;
@@ -106,12 +106,12 @@ public class implicit_model_parallel : MonoBehaviour
 		// Set Fixed Delta Time
 		Time.fixedDeltaTime = dt;
 
-		// Construct VertexData array, which means convert E to adjacent list.
-		vertices = new AdjacentData[X.Length];
+		// Construct VertexData array, which means convert E to adjacency list.
+		vertices = new AdjacencyData[X.Length];
 		int[] edgeCount = new int[X.Length];
 		for (int i = 0; i < X.Length; i++)
 		{
-			vertices[i] = new AdjacentData
+			vertices[i] = new AdjacencyData
 			{
 				Id = new(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1),
 				Length = float4x4.zero
@@ -123,7 +123,7 @@ public class implicit_model_parallel : MonoBehaviour
 			int u = E[i * 2];
 			int v = E[i * 2 + 1];
 
-			// Add adjacent information for vertex u
+			// Add adjacency information for vertex u
 			if (edgeCount[u] < 16)
 			{
 				int j = edgeCount[u];
@@ -132,7 +132,7 @@ public class implicit_model_parallel : MonoBehaviour
 				edgeCount[u]++;
 			}
 
-			// Add adjacent information for vertex v
+			// Add adjacency information for vertex v
 			if (edgeCount[v] < 16)
 			{
 				int j = edgeCount[v];
@@ -145,15 +145,15 @@ public class implicit_model_parallel : MonoBehaviour
 		positionBuffer[1] = new(X.Length, sizeof(float) * 3);
 		positionOldBuffer = new(X.Length, sizeof(float) * 3);
 		positionHatBuffer = new(X.Length, sizeof(float) * 3);
-		adjacentDataBuffer = new(X.Length, sizeof(uint) * 16 + sizeof(float) * 16/*,
+		adjacencyDataBuffer = new(X.Length, sizeof(uint) * 16 + sizeof(float) * 16/*,
 								 ComputeBufferType.Constant, ComputeBufferMode.Immutable*/);
-		adjacentDataBuffer.SetData(vertices);
+		adjacencyDataBuffer.SetData(vertices);
 
 		int kernel = computer.FindKernel("CSMain");
-		//computer.SetConstantBuffer("VerticesAdjacent", adjacentDataBuffer, 0, n * n);
+		//computer.SetConstantBuffer("VerticesAdjacency", adjacencyDataBuffer, 0, n * n);
 		computer.SetBuffer(kernel, "VerticesPositionInOld", positionOldBuffer);
 		computer.SetBuffer(kernel, "VerticesPositionInHat", positionHatBuffer);
-		computer.SetBuffer(kernel, "VerticesAdjacent", adjacentDataBuffer);
+		computer.SetBuffer(kernel, "VerticesAdjacency", adjacencyDataBuffer);
 		computer.SetFloat("dt", dt);
 		computer.SetFloat("spring_k", spring_k);
 		computer.SetFloat("inv_H", 1 / (1 / dt / dt + 4 * spring_k));
@@ -231,7 +231,7 @@ public class implicit_model_parallel : MonoBehaviour
 		mesh.vertices = X;
 	}
 
-	struct AdjacentData
+	struct AdjacencyData
 	{
 		public int4x4 Id;
 		public float4x4 Length;
@@ -307,9 +307,9 @@ public class implicit_model_parallel : MonoBehaviour
 
 	void OnDestroy()
 	{
-		positionBuffer[0].Release();
-		positionBuffer[1].Release();
-		positionOldBuffer.Release();
-		adjacentDataBuffer.Release();
+		positionBuffer[0]?.Release();
+		positionBuffer[1]?.Release();
+		positionOldBuffer?.Release();
+		adjacencyDataBuffer?.Release();
 	}
 }
