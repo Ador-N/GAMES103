@@ -13,6 +13,7 @@ StructuredBuffer<float3> VerticesPositionInHat;
 RWStructuredBuffer<float3> VerticesPositionInOld;
 RWStructuredBuffer<float3> VerticesPositionOut;
 StructuredBuffer<AdjacencyData> VerticesAdjacency;
+RWStructuredBuffer<uint> RealIterationCounts;
 
 float omega = 1, dt = 0.015f, spring_k = 8000;
 float inv_H = 2.743902e-05f; // 1 / (1 / dt / dt + 4 * spring_k)
@@ -37,7 +38,7 @@ inline float3 Get_Gradient(int id, float3 X, float3 X_hat) {
 
 [numthreads(64, 1, 1)]
 void CSMain (uint3 ID : SV_DispatchThreadID) {
-    uint id = ID.x, size = 0, _ = 0;
+    uint id = ID.x, size = 0, _ = 0, cnt = RealIterationCounts[id];
     VerticesPositionIn.GetDimensions(size, _);
     if (id >= size) return;
     float3 X = VerticesPositionIn[id];
@@ -52,4 +53,5 @@ void CSMain (uint3 ID : SV_DispatchThreadID) {
     X = omega * X + (1 - omega) * last_X;
 
     VerticesPositionOut[id] = X;
+    RealIterationCounts[id] = cnt + 1;
 }

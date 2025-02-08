@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -243,6 +245,11 @@ public class implicit_model_parallel : MonoBehaviour
 		Vector3[] X = mesh.vertices;
 		Vector3[] X_hat = new Vector3[X.Length];
 		Vector3[] last_X = new Vector3[X.Length];
+		uint[] realIterationCounts = new uint[X.Length];
+
+		ComputeBuffer iterationCountBuffer = new ComputeBuffer(X.Length, sizeof(uint));
+		iterationCountBuffer.SetData(realIterationCounts);
+		computer.SetBuffer(computer.FindKernel("CSMain"), "RealIterationCounts", iterationCountBuffer);
 
 
 		// Initial Setup.
@@ -262,6 +269,8 @@ public class implicit_model_parallel : MonoBehaviour
 		positionBuffer[0].SetData(X);
 		positionHatBuffer.SetData(X_hat);
 
+		GraphicsFence fence = Graphics.CreateGraphicsFence(GraphicsFenceType.AsyncQueueSynchronisation, SynchronisationStageFlags.ComputeProcessing);
+
 		for (int k = 0; k < iterationCount; k++)
 		{
 			int i = k % 2, o = (k + 1) % 2;
@@ -277,22 +286,23 @@ public class implicit_model_parallel : MonoBehaviour
 			// Dispatch compute shader，each thread handle 64 vertices.
 			/*if (k > 0)
 			{
-				bool finished = false;
-				AsyncGPUReadback.Request(positionBuffer[i], (AsyncGPUReadbackRequest request) =>
-				{
-					if (request.hasError)
-						Debug.Log("GPU readback error detected.");
-					finished = true;
-				});
-				AsyncGPUReadback.WaitAllRequests();
-				//while (!finished) Debug.Log("Waiting.");
+				Graphics.WaitOnAsyncGraphicsFence(fence);
 			}*/
 			int threadGroups = Mathf.CeilToInt((float)X.Length / 64);
 			computer.Dispatch(kernel, threadGroups, 1, 1);
+			//GL.Flush();
+			//fence = Graphics.CreateGraphicsFence(GraphicsFenceType.AsyncQueueSynchronisation, SynchronisationStageFlags.ComputeProcessing);
+			/*AsyncGPUReadback.Request(positionBuffer[i], (AsyncGPUReadbackRequest request) =>
+				{
+					if (request.hasError)
+						Debug.Log("GPU readback error detected.");
+				});*/
 
 		}
 		// Get data back.
 		positionBuffer[iterationCount % 2].GetData(X);
+		iterationCountBuffer.GetData(realIterationCounts);
+		iterationCountBuffer.Release();
 
 
 		// Finishing.
