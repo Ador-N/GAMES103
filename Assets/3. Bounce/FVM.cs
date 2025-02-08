@@ -204,7 +204,6 @@ public class FVM : MonoBehaviour
 				float oldY = X[i].y;
 				X[i].y = -3;
 				V[i].y += (-3 - oldY) / dt;
-				//Force[i].y += (-3 - oldY) / dt / dt / mass;
 			}
 		}
 
