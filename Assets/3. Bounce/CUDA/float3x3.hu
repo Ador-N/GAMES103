@@ -1,0 +1,195 @@
+#ifndef FLOAT3X3_H
+#define FLOAT3X3_H
+
+#include <cuda.h>
+#include "svd3_cuda.hu"
+
+// Avoid polluting the global namespace through inclusion
+namespace
+{
+#include "printf/printf.hu"
+#include "printf/printf.cu"
+    using namespace std;
+}
+
+struct float3x3
+{
+    float m00 = 0, m01 = 0, m02 = 0;
+    float m10 = 0, m11 = 0, m12 = 0;
+    float m20 = 0, m21 = 0, m22 = 0;
+
+    __device__ float3x3() {}
+
+    __device__
+    float3x3(float m00, float m01, float m02,
+             float m10, float m11, float m12,
+             float m20, float m21, float m22)
+        : m00(m00), m01(m01), m02(m02),
+          m10(m10), m11(m11), m12(m12),
+          m20(m20), m21(m21), m22(m22) {}
+
+    __device__
+    float3x3(const float3 &diag)
+        : m00(diag.x), m11(diag.y), m22(diag.z) {}
+
+    __device__
+    float3x3(float m00, float m11, float m22)
+        : m00(m00), m11(m11), m22(m22) {}
+
+    __device__ static float3x3 identity()
+    {
+        return float3x3(1, 1, 1);
+    }
+    __device__ static float3x3 zero()
+    {
+        return float3x3();
+    }
+
+    __device__ float3 operator*(const float3 &v) const
+    {
+        return make_float3(
+            m00 * v.x + m01 * v.y + m02 * v.z,
+            m10 * v.x + m11 * v.y + m12 * v.z,
+            m20 * v.x + m21 * v.y + m22 * v.z);
+    }
+
+    __device__ float3x3 operator*(const float3x3 &m) const
+    {
+        return float3x3(
+            m00 * m.m00 + m01 * m.m10 + m02 * m.m20,
+            m00 * m.m01 + m01 * m.m11 + m02 * m.m21,
+            m00 * m.m02 + m01 * m.m12 + m02 * m.m22,
+            m10 * m.m00 + m11 * m.m10 + m12 * m.m20,
+            m10 * m.m01 + m11 * m.m11 + m12 * m.m21,
+            m10 * m.m02 + m11 * m.m12 + m12 * m.m22,
+            m20 * m.m00 + m21 * m.m10 + m22 * m.m20,
+            m20 * m.m01 + m21 * m.m11 + m22 * m.m21,
+            m20 * m.m02 + m21 * m.m12 + m22 * m.m22);
+    }
+
+    __device__ float3x3 operator+(const float3x3 &m) const
+    {
+        return float3x3(
+            m00 + m.m00, m01 + m.m01, m02 + m.m02,
+            m10 + m.m10, m11 + m.m11, m12 + m.m12,
+            m20 + m.m20, m21 + m.m21, m22 + m.m22);
+    }
+
+    __device__ float3x3 operator-(const float3x3 &m) const
+    {
+        return float3x3(
+            m00 - m.m00, m01 - m.m01, m02 - m.m02,
+            m10 - m.m10, m11 - m.m11, m12 - m.m12,
+            m20 - m.m20, m21 - m.m21, m22 - m.m22);
+    }
+
+    __device__ float3x3 operator*(float s) const
+    {
+        return float3x3(
+            m00 * s, m01 * s, m02 * s,
+            m10 * s, m11 * s, m12 * s,
+            m20 * s, m21 * s, m22 * s);
+    }
+
+    __device__ float3x3 operator/(float s) const
+    {
+        float inv = 1.0f / s;
+        return float3x3(
+            m00 * inv, m01 * inv, m02 * inv,
+            m10 * inv, m11 * inv, m12 * inv,
+            m20 * inv, m21 * inv, m22 * inv);
+    }
+
+    __device__ float3x3 operator-() const
+    {
+        return float3x3(
+            -m00, -m01, -m02,
+            -m10, -m11, -m12,
+            -m20, -m21, -m22);
+    }
+
+    __device__ float3x3 transpose() const
+    {
+        return float3x3(
+            m00, m10, m20,
+            m01, m11, m21,
+            m02, m12, m22);
+    }
+
+    __device__ float3x3 inverse() const
+    {
+        float det = m00 * (m11 * m22 - m12 * m21) -
+                    m01 * (m10 * m22 - m12 * m20) +
+                    m02 * (m10 * m21 - m11 * m20);
+        float invDet = 1.0f / det;
+        return float3x3(
+            (m11 * m22 - m12 * m21) * invDet,
+            (m02 * m21 - m01 * m22) * invDet,
+            (m01 * m12 - m02 * m11) * invDet,
+            (m12 * m20 - m10 * m22) * invDet,
+            (m00 * m22 - m02 * m20) * invDet,
+            (m02 * m10 - m00 * m12) * invDet,
+            (m10 * m21 - m11 * m20) * invDet,
+            (m01 * m20 - m00 * m21) * invDet,
+            (m00 * m11 - m01 * m10) * invDet);
+    }
+
+    __device__ float3 diag() const
+    {
+        return make_float3(m00, m11, m22);
+    }
+
+    __device__ float trace() const
+    {
+        return m00 + m11 + m22;
+    }
+
+    __device__ void svd(float3x3 &U, float3 &S, float3x3 &V)
+    {
+        ::svd(m00, m01, m02, m10, m11, m12, m20, m21, m22,
+              U.m00, U.m01, U.m02, U.m10, U.m11, U.m12, U.m20, U.m21, U.m22,
+              S.x, S.y, S.z,
+              V.m00, V.m01, V.m02, V.m10, V.m11, V.m12, V.m20, V.m21, V.m22);
+    }
+
+    __device__ float3 getColumn(int i) const
+    {
+        return make_float3((&m00)[i], (&m10)[i], (&m20)[i]); // 天才？？
+    }
+
+    __device__ float3 getRow(int i) const
+    {
+        return make_float3((&m00)[i * 3], (&m00)[i * 3 + 1], (&m00)[i * 3 + 2]);
+    }
+
+    __device__ void setColumn(int i, const float3 &v)
+    {
+        (&m00)[i] = v.x;
+        (&m10)[i] = v.y;
+        (&m20)[i] = v.z;
+    }
+
+    __device__ void setRow(int i, const float3 &v)
+    {
+        (&m00)[i * 3] = v.x;
+        (&m00)[i * 3 + 1] = v.y;
+        (&m00)[i * 3 + 2] = v.z;
+    }
+};
+
+__device__ float3x3 operator*(float s, const float3x3 &m)
+{
+    return m * s;
+}
+
+__device__ char *to_string(const float3x3 &m, char *buf)
+{
+    // use sprintf_ from printf/printf.hu
+    int len = sprintf_(buf, "[%f, %f, %f; %f, %f, %f; %f, %f, %f]",
+                       m.m00, m.m01, m.m02,
+                       m.m10, m.m11, m.m12,
+                       m.m20, m.m21, m.m22);
+    return buf + len;
+}
+
+#endif // FLOAT3X3_H

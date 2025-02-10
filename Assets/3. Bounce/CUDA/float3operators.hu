@@ -1,0 +1,147 @@
+#ifndef FLOAT3OPERATORS_H
+#define FLOAT3OPERATORS_H
+#define __both__ __host__ __device__
+#define __bothinline__ __host__ __device__ __forceinline__
+
+namespace
+{
+#include "printf/printf.hu"
+}
+
+/*
+ * Algebraic operators
+ */
+__bothinline__ float3 operator+(float3 a, float3 b)
+{
+    return make_float3(a.x + b.x, a.y + b.y, a.z + b.z);
+}
+
+__bothinline__ float3 operator-(float3 a, float3 b)
+{
+    return make_float3(a.x - b.x, a.y - b.y, a.z - b.z);
+}
+
+__bothinline__ float3 operator+=(float3 &a, float3 b)
+{
+    a.x += b.x;
+    a.y += b.y;
+    a.z += b.z;
+    return a;
+}
+
+__bothinline__ float3 operator-=(float3 &a, float3 b)
+{
+    a.x -= b.x;
+    a.y -= b.y;
+    a.z -= b.z;
+    return a;
+}
+
+__bothinline__ float3 operator*(float3 a, float b)
+{
+    return make_float3(a.x * b, a.y * b, a.z * b);
+}
+
+__bothinline__ float3 operator*(float a, float3 b)
+{
+    return make_float3(a * b.x, a * b.y, a * b.z);
+}
+
+__bothinline__ float3 operator/(float3 a, float b)
+{
+    return make_float3(a.x / b, a.y / b, a.z / b);
+}
+
+__bothinline__ float3 operator*(float3 a, float3 b)
+{
+    return make_float3(a.x * b.x, a.y * b.y, a.z * b.z);
+}
+
+__bothinline__ float3 operator*=(float3 &a, float b)
+{
+    a.x *= b;
+    a.y *= b;
+    a.z *= b;
+    return a;
+}
+
+__bothinline__ float3 operator/=(float3 &a, float b)
+{
+    a.x /= b;
+    a.y /= b;
+    a.z /= b;
+    return a;
+}
+
+__bothinline__ bool operator==(float3 a, float3 b)
+{
+    return a.x == b.x && a.y == b.y && a.z == b.z;
+}
+
+__bothinline__ bool operator!=(float3 a, float3 b)
+{
+    return a.x != b.x || a.y != b.y || a.z != b.z;
+}
+
+/*
+ * Vector operations
+ */
+
+__bothinline__ float dot(float3 a, float3 b)
+{
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+__bothinline__ float3 cross(float3 a, float3 b)
+{
+    return make_float3(a.y * b.z - a.z * b.y,
+                       a.z * b.x - a.x * b.z,
+                       a.x * b.y - a.y * b.x);
+}
+
+__bothinline__ float sqrMagnitude(float3 a)
+{
+    return dot(a, a);
+}
+
+__bothinline__ float magnitude(float3 a)
+{
+    return sqrtf(dot(a, a));
+}
+
+__bothinline__ float3 normalize(float3 a)
+{
+    return a / magnitude(a);
+}
+
+__bothinline__ char *to_string(float3 a, char *buffer)
+{
+    int size = sprintf_(buffer, "(%f, %f, %f)", a.x, a.y, a.z);
+    return buffer;
+}
+
+/*__device__ float3 atomicCAS(float3 *address, float3 compare, float3 val)
+{
+    // Just like atomicCAS for float, but for float3
+    unsigned long long int *address_as_ull = (unsigned long long int *)address;
+    unsigned long long int old = *((unsigned long long int *)&compare);
+    unsigned long long int assumed;
+    do
+    {
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed, *((unsigned long long int *)&val));
+    } while (assumed != old);
+    return *((float3 *)&old);
+}*/
+
+__device__ float3 atomicAdd(float3 *address, float3 val)
+{
+    // Just do atomicAdd for each component
+    float3 old = *address;
+    atomicAdd(&address->x, val.x);
+    atomicAdd(&address->y, val.y);
+    atomicAdd(&address->z, val.z);
+    return old;
+}
+
+#endif

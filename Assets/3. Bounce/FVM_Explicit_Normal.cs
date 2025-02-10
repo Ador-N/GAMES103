@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 
-public class FVM : MonoBehaviour
+public class FVM_Explicit_Normal : MonoBehaviour
 {
 	float dt = 0.003f;
 	int updatesPreFixedUpdate = 5;
+	float slowDownFactor = 2;
 	float mass = 1;
 	float stiffness_0 = 20000.0f;
 	float stiffness_1 = 5000.0f;
@@ -27,8 +29,6 @@ public class FVM : MonoBehaviour
 	//For Laplacian smoothing.
 	Vector3[] V_sum;
 	int[] V_num;
-
-	SVD svd = new SVD();
 
 	// Start is called before the first frame update
 	void Start()
@@ -147,6 +147,7 @@ public class FVM : MonoBehaviour
 		Time.fixedDeltaTime = updatesPreFixedUpdate * dt * 2.5f;
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	Matrix4x4 Build_Edge_Matrix(int tet)
 	{
 		Matrix4x4 ret = Matrix4x4.identity;
@@ -183,9 +184,8 @@ public class FVM : MonoBehaviour
 									Utils.Mul(stiffness_0 * G.Trace(), Matrix4x4.identity));
 			//TODO: Elastic Force
 			Matrix4x4 force = Utils.Mul(-det_Dm[tet] / 6, F * S * inv_Dm[tet].transpose);
-			Force[Tet[tet * 4 + 0]] -=
-			(Vector3)(force.GetColumn(0) + force.GetColumn(1) + force.GetColumn(2));
-			//Force[Tet[tet * 4 + 0]] -= force.MultiplyVector(Vector3.one);
+			Force[Tet[tet * 4 + 0]] -= force.MultiplyVector(Vector3.one);
+			//(Vector3)(force.GetColumn(0) + force.GetColumn(1) + force.GetColumn(2));
 			Force[Tet[tet * 4 + 1]] += (Vector3)force.GetColumn(0);
 			Force[Tet[tet * 4 + 2]] += (Vector3)force.GetColumn(1);
 			Force[Tet[tet * 4 + 3]] += (Vector3)force.GetColumn(2);
