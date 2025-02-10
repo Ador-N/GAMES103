@@ -34,3 +34,16 @@ public static class Utils
         return mat.m00 + mat.m11 + mat.m22;
     }
 }
+
+public class Singleton<T> where T : new()
+{
+    private static T instance;
+    public static T Instance
+    {
+        get
+        {
+            instance ??= new();
+            return instance;
+        }
+    }
+}

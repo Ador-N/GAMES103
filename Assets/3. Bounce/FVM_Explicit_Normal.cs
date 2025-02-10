@@ -144,7 +144,7 @@ public class FVM_Explicit_Normal : MonoBehaviour
 		}
 
 		// Set fixed delta time.
-		Time.fixedDeltaTime = updatesPreFixedUpdate * dt * 2.5f;
+		Time.fixedDeltaTime = updatesPreFixedUpdate * dt * slowDownFactor;
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
