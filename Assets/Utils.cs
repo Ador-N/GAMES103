@@ -33,6 +33,21 @@ public static class Utils
     {
         return mat.m00 + mat.m11 + mat.m22;
     }
+
+    public static Vector3Int FloorToInt(Vector3 v)
+    {
+        return new Vector3Int(Mathf.FloorToInt(v.x), Mathf.FloorToInt(v.y), Mathf.FloorToInt(v.z));
+    }
+
+    public static Vector3Int CeilToInt(Vector3 v)
+    {
+        return new Vector3Int(Mathf.CeilToInt(v.x), Mathf.CeilToInt(v.y), Mathf.CeilToInt(v.z));
+    }
+
+    public static void Deconstruct(this Vector3Int v, out int x, out int y, out int z)
+    {
+        (x, y, z) = (v.x, v.y, v.z);
+    }
 }
 
 public class Singleton<T> where T : new()
