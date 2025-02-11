@@ -8,8 +8,8 @@ using System.Runtime.CompilerServices;
 public class FVM_Explicit_Normal : MonoBehaviour
 {
 	float dt = 0.003f;
-	int updatesPreFixedUpdate = 5;
-	float slowDownFactor = 2;
+	int updatesPreFixedUpdate = 2;
+	float slowDownFactor = 7;
 	float mass = 1;
 	float stiffness_0 = 20000.0f;
 	float stiffness_1 = 5000.0f;

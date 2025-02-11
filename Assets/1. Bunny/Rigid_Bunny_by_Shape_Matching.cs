@@ -15,7 +15,7 @@ public class Rigid_Bunny_by_Shape_Matching : MonoBehaviour
 	void Start()
 	{
 		// Set Fixed Delta Time
-		Time.fixedDeltaTime = 0.015f;
+		Time.fixedDeltaTime = 0.025f;
 
 		Mesh mesh = GetComponent<MeshFilter>().mesh;
 		V = new Vector3[mesh.vertices.Length];
@@ -215,7 +215,7 @@ public class Rigid_Bunny_by_Shape_Matching : MonoBehaviour
 			launched = false;
 		}
 		if (!launched) return;
-		float dt = 0.015f;
+		float dt = 0.025f;
 
 		float time0 = Time.realtimeSinceStartup * 1000;
 		Vector3 gravity = Physics.gravity;
@@ -267,6 +267,6 @@ public class Rigid_Bunny_by_Shape_Matching : MonoBehaviour
 
 		Update_Mesh(c, R, 1 / dt);
 		float time6 = Time.realtimeSinceStartup * 1000;
-		Debug.Log($"Time: {time1 - time0}, {time2 - time1}, {time3 - time2}, {time4 - time3}, {time5 - time4}, {time6 - time5}");
+		//Debug.Log($"Time: {time1 - time0}, {time2 - time1}, {time3 - time2}, {time4 - time3}, {time5 - time4}, {time6 - time5}");
 	}
 }

@@ -23,7 +23,8 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
     int[] Tet;
     int tet_number;         //The number of tetrahedra
 
-    public Vector3[] X;
+    /*public */
+    Vector3[] X;
     int number;             //The number of vertices
 
     float3x3[] inv_Dm;

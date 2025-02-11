@@ -13,7 +13,7 @@ public class FVM_Explicit_SVD : MonoBehaviour
 
 	float dt = 0.0025f;
 	int updatesPreFixedUpdate = 2;
-	float slowDownFactor = 2;
+	float slowDownFactor = 10;
 	float mass = 1;
 	float stiffness_0 = 20000.0f;
 	float stiffness_1 = 5000.0f;
@@ -24,7 +24,7 @@ public class FVM_Explicit_SVD : MonoBehaviour
 
 	Vector3[] Force;
 	Vector3[] V;
-	[SerializeField]
+	//[SerializeField]
 	Vector3[] X;
 	int number;             //The number of vertices
 
