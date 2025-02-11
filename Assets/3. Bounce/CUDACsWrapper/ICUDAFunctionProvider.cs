@@ -20,4 +20,6 @@ public interface ICUDAFunctionProvider
 
     abstract void Impulse(Vector3 impulse);
 
+    abstract void SetLaplacianOmega(float omega);
+
 }

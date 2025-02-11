@@ -9,35 +9,7 @@ using System.Runtime.InteropServices;
 
 public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T>, ICUDAFunctionProvider, new()
 {
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static IntPtr CUDA_device_name() => provider.CUDA_device_name();
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static unsafe bool GetDebugInfo(byte* info) => provider.GetDebugInfo(info);
-
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static void SetDebugTet(int tet) => provider.SetDebugTet(tet);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static unsafe void Initialize(
-        int* Tet, float3x3* inv_Dm, float* det_Dm,
-        int number, int tet_number, bool useGravity, bool laplacianSmoothing,
-        float dt, float s0, float s1, float damp, float mass, float floorY,
-        HyperelasticModelType hyperelasticModelType)
-        => provider.Initialize(
-            Tet, inv_Dm, det_Dm,
-            number, tet_number, useGravity, laplacianSmoothing,
-            dt, s0, s1, damp, mass, floorY,
-            hyperelasticModelType);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static unsafe void _Update(Vector3* X, int iteration_number) => provider._Update(X, iteration_number);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static void Impulse(Vector3 impulse) => provider.Impulse(impulse);
-
-    static ICUDAFunctionProvider provider = new T();
+    static ICUDAFunctionProvider provider = Singleton<T>.Instance;
     byte[] debug_info = new byte[2048];
     string caption;
     float dt = 0.0005f;
@@ -172,7 +144,7 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
             fixed (int* TetPtr = Tet)
             fixed (float3x3* inv_DmPtr = inv_Dm)
             fixed (float* det_DmPtr = det_Dm)
-                Initialize(
+                provider.Initialize(
                     TetPtr, inv_DmPtr, det_DmPtr,
                     number, tet_number, useGravity, laplacianSmoothing,
                     dt, stiffness_0, stiffness_1, damp, mass, -3,
@@ -190,6 +162,8 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
             },
             font = Font.CreateDynamicFontFromOSFont("Source Code Pro", 15),
         };
+
+        provider.SetLaplacianOmega(0.5f);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -216,7 +190,7 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
         unsafe
         {
             fixed (byte* debug_info = this.debug_info)
-                GetDebugInfo(debug_info);
+                provider.GetDebugInfo(debug_info);
         }
         if (debug_info[0] != 0)
             caption /*+*/= System.Text.Encoding.ASCII.GetString(debug_info).TrimEnd('\0');
@@ -226,15 +200,15 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
 
     public void SetDebugTet(string text)
     {
-        SetDebugTet(int.Parse(text));
+        provider.SetDebugTet(int.Parse(text));
     }
 
     void Update()
     {
         // Jump up.
-        if (Input.GetKeyDown(KeyCode.Space))
+        if (Input.GetKeyDown(KeyCode.Space)/* || Input.GetMouseButtonDown(0)*/)
         {
-            Impulse(new Vector3(0, 2.5f, 0));
+            provider.Impulse(new Vector3(0, 5f, 0));
         }
 
         // Dump the vertex array for rendering.
@@ -264,11 +238,11 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
     void FixedUpdate()
     {
         if (debug)
-            SetDebugTet(0);
+            provider.SetDebugTet(0);
         unsafe
         {
             fixed (Vector3* xPtr = X)
-                _Update(xPtr, updatesPreFixedUpdate);
+                provider._Update(xPtr, updatesPreFixedUpdate);
         }
     }
 }

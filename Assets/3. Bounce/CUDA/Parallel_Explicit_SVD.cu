@@ -25,7 +25,7 @@ float3 *V_sum;
 int *V_num;
 
 int number = 0, tet_number = 0;
-float dt, s0, s1, damp, mass, floorY;
+float dt, s0, s1, damp, mass, floorY, omega = 0.67;
 
 bool useGravity = true, laplacianSmoothing = true;
 
@@ -61,8 +61,7 @@ __global__ void _preUpdate(float3 *Force, int number, bool useGravity)
 }
 
 template <typename T>
-__global__ void
-_calcStress(
+__global__ void _calcStress(
     float3 *X, float3 *Force,
     int *Tet, float3x3 *inv_Dm, float *det_Dm,
     int tet_number, float s0, float s1,
@@ -224,7 +223,7 @@ void _update()
         cudaMemset(V_num, 0, number * sizeof(int));
         _laplacianSmoothingTet<<<grid_size_tet, 256>>>(V, V_sum, V_num, d_Tet, tet_number);
         cudaDeviceSynchronize();
-        _laplacianSmoothingVert<<<grid_size_vert, 256>>>(V, V_sum, V_num, number, 0.67);
+        _laplacianSmoothingVert<<<grid_size_vert, 256>>>(V, V_sum, V_num, number, omega);
         cudaDeviceSynchronize();
     }
 }
@@ -331,5 +330,10 @@ extern "C"
             [=] __device__(float3 * V, int i)
             { V[i] += impulse; });
         cudaDeviceSynchronize();
+    }
+
+    __export__ void SetLaplacianOmega(float _omega)
+    {
+        omega = _omega;
     }
 }

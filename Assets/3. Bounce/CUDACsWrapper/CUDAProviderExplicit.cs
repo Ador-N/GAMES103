@@ -6,27 +6,37 @@ using System.Runtime.InteropServices;
 
 public class CUDAProviderExplicit : Singleton<CUDAProviderExplicit>, ICUDAFunctionProvider
 {
+    /************************************
+     * CUDA functions imported from dll *
+     ************************************/
     [DllImport("Parallel_Explicit_SVD.dll", EntryPoint = "CUDA_device_name")]
-    public static extern IntPtr _CUDA_device_name();
+    protected static extern IntPtr _CUDA_device_name();
 
     [DllImport("Parallel_Explicit_SVD.dll", EntryPoint = "GetDebugInfo")]
-    public static unsafe extern bool _GetDebugInfo(byte* info);
+    protected static unsafe extern bool _GetDebugInfo(byte* info);
 
     [DllImport("Parallel_Explicit_SVD.dll", EntryPoint = "SetDebugTet")]
-    public static extern void _SetDebugTet(int tet);
+    protected static extern void _SetDebugTet(int tet);
 
     [DllImport("Parallel_Explicit_SVD.dll", EntryPoint = "Initialize")]
-    public static unsafe extern void _Initialize(
+    protected static unsafe extern void _Initialize(
         int* Tet, float3x3* inv_Dm, float* det_Dm,
         int number, int tet_number, bool useGravity, bool laplacianSmoothing,
         float dt, float s0, float s1, float damp, float mass, float floorY,
         HyperelasticModelType hyperelasticModelType);
 
     [DllImport("Parallel_Explicit_SVD.dll", EntryPoint = "Update")]
-    public static unsafe extern void __Update(Vector3* X, int iteration_number);
+    protected static unsafe extern void __Update(Vector3* X, int iteration_number);
 
     [DllImport("Parallel_Explicit_SVD.dll", EntryPoint = "Impulse")]
-    public static extern void _Impulse(Vector3 impulse);
+    protected static extern void _Impulse(Vector3 impulse);
+
+    [DllImport("Parallel_Explicit_SVD.dll", EntryPoint = "SetLaplacianOmega")]
+    protected static extern void _SetLaplacianOmega(float omega);
+
+    /**************************
+     * CUDA functions wrapper *
+     **************************/
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IntPtr CUDA_device_name() => _CUDA_device_name();
@@ -54,5 +64,8 @@ public class CUDAProviderExplicit : Singleton<CUDAProviderExplicit>, ICUDAFuncti
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Impulse(Vector3 impulse) => _Impulse(impulse);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void SetLaplacianOmega(float omega) => _SetLaplacianOmega(omega);
 
 }
