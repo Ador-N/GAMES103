@@ -64,11 +64,11 @@ Becomes plastic with large deformation:
 
 Without laplacian smoothing:
 
-![FVM-GPU-neoHookean](pics/FVM-GPU-neoHookean.gif)
+![FVM-GPU-neoHookean](pics/FVM-GPU-neoHookean-noLaplacian.gif)
 
 With laplacian smoothing:
 
-![FVM-GPU-neoHookean-noLaplacian](pics/FVM-GPU-neoHookean-noLaplacian.gif)
+![FVM-GPU-neoHookean-noLaplacian](pics/FVM-GPU-neoHookean-clipped.gif)
 
 ## Lab 4 - Pool Ripples (Shallow Wave)
 
