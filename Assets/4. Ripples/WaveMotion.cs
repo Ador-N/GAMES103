@@ -1,27 +1,53 @@
 using UnityEngine;
 using System.Collections;
 using System.Runtime.CompilerServices;
+using System.Data;
+using System.Collections.Generic;
+using UnityEngine.Rendering.Universal;
+using UnityEngine.Profiling;
 
-public class wave_motion : MonoBehaviour
+public class WaveMotion : MonoBehaviour
 {
 	int size = 100;
 	float rate = 0.005f;
 	float gamma = 0.004f;
 	float damping = 0.996f;
+	float dx = 0.1f;
+	float dA = 0.01f;
+	float dt = 0.02f;
 	float[,] old_h;
+	float[,] h;
 	float[,] low_h;
 	float[,] vh;
 	float[,] b;
 
-	bool[,] cg_mask;
 	float[,] cg_p;
 	float[,] cg_r;
 	float[,] cg_Ap;
-	bool tag = true;
-	float dx = 0.1f, dA = 0.01f, dt;
 
-	public Collider cube_v;
-	public Collider cube_w;
+	struct Mask
+	{
+		public bool[,] mask;
+		public int li, ui, lj, uj;
+
+		public Mask(bool[,] mask, int li, int ui, int lj, int uj)
+		{
+			this.mask = mask;
+			this.li = li;
+			this.ui = ui;
+			this.lj = lj;
+			this.uj = uj;
+		}
+
+		public bool this[int i, int j]
+		{
+			get => mask[i, j];
+			set => mask[i, j] = value;
+		}
+	}
+	List<RigidMotion> rigidbodies;
+	Dictionary<RigidMotion, Mask> rigidbody_mask = new();
+	//bool tag = true;
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	Vector3 GetPosition(int i, int j)
@@ -37,6 +63,8 @@ public class wave_motion : MonoBehaviour
 	{
 		Mesh mesh = GetComponent<MeshFilter>().mesh;
 		mesh.Clear();
+
+		rigidbodies = new(FindObjectsOfType<RigidMotion>());
 
 		Vector3[] X = new Vector3[size * size];
 
@@ -65,10 +93,10 @@ public class wave_motion : MonoBehaviour
 
 		low_h = new float[size, size];
 		old_h = new float[size, size];
+		h = new float[size, size];
 		vh = new float[size, size];
 		b = new float[size, size];
 
-		cg_mask = new bool[size, size];
 		cg_p = new float[size, size];
 		cg_r = new float[size, size];
 		cg_Ap = new float[size, size];
@@ -80,6 +108,8 @@ public class wave_motion : MonoBehaviour
 				old_h[i, j] = 0;
 				vh[i, j] = 0;
 			}
+
+		Time.fixedDeltaTime = dt;
 	}
 
 	void A_Times(bool[,] mask, float[,] x, float[,] Ax, int li, int ui, int lj, int uj)
@@ -150,32 +180,39 @@ public class wave_motion : MonoBehaviour
 
 	}
 
-	void CalcVhForBlock(Collider cube, float[,] h)
+	void CalcVhForBlock(RigidMotion body, float[,] h)
 	{
 		//TODO: for block, calculate low_h.
 		//TODO: then set up b and cg_mask for conjugate gradient.
 		Vector3 size3 = new(size, 0, size);
 		Vector3Int size3i = new(size - 1, 0, size - 1);
-		var (li, _, lj) = Vector3Int.Max(Utils.FloorToInt(cube.bounds.min * 10 + 0.5f * size3), Vector3Int.zero);
-		var (ui, _, uj) = Vector3Int.Min(Utils.CeilToInt(cube.bounds.max * 10 + 0.5f * size3), size3i);
+		Collider collider = body.GetComponent<Collider>();
+		var (li, _, lj) = Vector3Int.Max(Utils.FloorToInt(collider.bounds.min * 10 + 0.5f * size3), Vector3Int.zero);
+		var (ui, _, uj) = Vector3Int.Min(Utils.CeilToInt(collider.bounds.max * 10 + 0.5f * size3), size3i);
+
+		if (!rigidbody_mask.TryGetValue(body, out var mask))
+			mask = rigidbody_mask[body] = new Mask(new bool[size, size], li, ui, lj, uj);
+
+		for (int i = mask.li; i <= mask.ui; i++)
+			for (int j = mask.lj; j <= mask.uj; j++)
+				mask[i, j] = false;
+
+		mask = rigidbody_mask[body] = new Mask(mask.mask, li, ui, lj, uj);
 
 		for (int i = li; i <= ui; i++)
 			for (int j = lj; j <= uj; j++)
-			{
-				if (cube.Raycast(
+				if (collider.Raycast(
 						new Ray(GetPosition(i, j) + Vector3.down * 10, Vector3.up),
 						out var hitInfo,
 						10 + h[i, j]))
 				{
 					low_h[i, j] = hitInfo.point.y;
 					b[i, j] = (h[i, j] - low_h[i, j]) / rate;
-					cg_mask[i, j] = true;
+					mask[i, j] = true;
 				}
-				else
-					cg_mask[i, j] = false;
-			}
+
 		//TODO: Solve the Poisson equation to obtain vh (virtual height).
-		Conjugate_Gradient(cg_mask, b, vh, li, ui, lj, uj);
+		Conjugate_Gradient(mask.mask, b, vh, li, ui, lj, uj);
 
 	}
 
@@ -195,9 +232,13 @@ public class wave_motion : MonoBehaviour
 
 		//Step 2: Block->Water coupling
 
-		// Calculate low_h for block 1 & 2.
-		CalcVhForBlock(cube_v, new_h);
-		CalcVhForBlock(cube_w, new_h);
+		Profiler.BeginSample("Block->Water coupling");
+		// Calculate low_h for rigidbodies
+		foreach (var body in rigidbodies)
+		{
+			CalcVhForBlock(body, h);
+		}
+		Profiler.EndSample();
 
 		//TODO: Diminish vh.
 		for (int i = 0; i < size; i++)
@@ -224,23 +265,27 @@ public class wave_motion : MonoBehaviour
 
 		//Step 4: Water->Block coupling.
 		//More TODO here.
+		foreach (var (cube, mask) in rigidbody_mask)
+		{
+			for (int i = mask.li; i <= mask.ui; i++)
+				for (int j = mask.lj; j <= mask.uj; j++)
+				{
+					if (mask[i, j])
+					{
+						cube.Impulse(
+							GetPosition(i, j) + Vector3.up * h[i, j],
+							0.05f * dA * vh[i, j] * Vector3.up
+						);
+					}
+				}
+		}
+
 	}
 
-
-	// Update is called once per frame
 	void Update()
 	{
 		Mesh mesh = GetComponent<MeshFilter>().mesh;
 		Vector3[] X = mesh.vertices;
-		float[,] new_h = new float[size, size];
-		float[,] h = new float[size, size];
-
-		//TODO: Load X.y into h.
-		for (int i = 0; i < size; i++)
-			for (int j = 0; j < size; j++)
-			{
-				h[i, j] = X[i * size + j].y;
-			}
 
 		if (Input.GetKey("r"))
 		{
@@ -254,10 +299,7 @@ public class wave_motion : MonoBehaviour
 			h[i, j + 1] -= r;
 		}
 
-		for (int l = 0; l < 8; l++)
-		{
-			Shallow_Wave(old_h, h, new_h);
-		}
+		_FixedUpdate();
 
 		//TODO: Store h back into X.y and recalculate normal.
 
@@ -266,8 +308,20 @@ public class wave_motion : MonoBehaviour
 			{
 				X[i * size + j].y = h[i, j];
 			}
+
 		mesh.vertices = X;
 		mesh.RecalculateNormals();
+
+	}
+
+	void _FixedUpdate()
+	{
+		float[,] new_h = new float[size, size];
+
+		for (int l = 0; l < 8; l++)
+		{
+			Shallow_Wave(old_h, h, new_h);
+		}
 
 	}
 }
