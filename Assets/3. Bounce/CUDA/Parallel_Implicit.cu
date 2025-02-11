@@ -9,12 +9,6 @@
 #include <cstdio>
 #include "printf/printf.hu"
 
-enum HyperelasticModelType
-{
-    StVK,
-    neoHookean
-} modelType;
-
 float3 *Force, *d_X, *V;
 
 int *d_Tet;
@@ -60,13 +54,7 @@ __global__ void _preUpdate(float3 *Force, int number, bool useGravity)
     Force[i] = make_float3(0, -9.81, 0) * useGravity;
 }
 
-template <typename T>
-__global__ void
-_calcStress(
-    float3 *X, float3 *Force,
-    int *Tet, float3x3 *inv_Dm, float *det_Dm,
-    int tet_number, float s0, float s1,
-    T hyperElasticModel)
+__global__ void _calcStress(float3 *X, float3 *Force, int *Tet, float3x3 *inv_Dm, float *det_Dm, int tet_number, float s0, float s1)
 {
     int tet = blockIdx.x * blockDim.x + threadIdx.x;
     if (tet >= tet_number)
@@ -77,8 +65,13 @@ _calcStress(
     float3x3 U, V;
     float3 l;
     F.svd(U, l, V);
-    float3 dWdL = hyperElasticModel(l, s0, s1);
 
+    float I = sqrMagnitude(l);
+    float3 S = l * l;
+    float3 dWdL = make_float3(
+        0.5f * l.x * (I - 3) * s0 + 2 * l.x * (S.x - 1) * s1,
+        0.5f * l.y * (I - 3) * s0 + 2 * l.y * (S.y - 1) * s1,
+        0.5f * l.z * (I - 3) * s0 + 2 * l.z * (S.z - 1) * s1);
     float3x3 P = U * float3x3(dWdL) * V.transpose();
     float3x3 force = (-det_Dm[tet] / 6) * P * inv_Dm[tet].transpose();
 
@@ -97,6 +90,10 @@ _calcStress(
         tail = to_string(F, tail);
         tail = strcat_d(tail, "\nF - UlVt: ");
         tail = to_string(F - U * float3x3(l) * V.transpose(), tail);
+        tail = strcat_d(tail, "\nI: ");
+        tail += sprintf_(tail, "%f", I);
+        tail = strcat_d(tail, "\nS: ");
+        tail = to_string(S, tail);
         tail = strcat_d(tail, "\ndWdL: ");
         tail = to_string(dWdL, tail);
         tail = strcat_d(tail, "\nP: ");
@@ -167,11 +164,6 @@ __global__ void verticesUpdate(float3 *arr, int number, T update)
     update(arr, i);
 }
 
-#define CALC_STRESS_MODEL_CASE(m)                                                                                  \
-    case m:                                                                                                        \
-        _calcStress<<<grid_size_tet, 256>>>(d_X, Force, d_Tet, d_inv_Dm, d_det_Dm, tet_number, s0, s1, model_##m); \
-        break;
-
 void _update()
 {
     int grid_size_vert = (number + 255) / 256;
@@ -180,39 +172,7 @@ void _update()
     _preUpdate<<<grid_size_vert, 256>>>(Force, number, useGravity);
     cudaDeviceSynchronize();
 
-    auto model_StVK = [] __device__(float3 l, float s0, float s1)
-    {
-        float I = sqrMagnitude(l);
-        float3 S = l * l;
-        float3 dWdL = make_float3(
-            0.5f * l.x * (I - 3) * s0 + 2 * l.x * (S.x - 1) * s1,
-            0.5f * l.y * (I - 3) * s0 + 2 * l.y * (S.y - 1) * s1,
-            0.5f * l.z * (I - 3) * s0 + 2 * l.z * (S.z - 1) * s1);
-        return dWdL;
-    };
-
-    auto model_neoHookean = [] __device__(float3 l, float s0, float s1)
-    {
-        float3 S = l * l;
-        float I = sqrMagnitude(l),
-              III = S.x * S.y * S.z,
-              rcbrtIII = rcbrt(III);
-        float3 dIdL = make_float3(2 * l.x, 2 * l.y, 2 * l.z),
-               dIIIdL = make_float3(S.y * S.z, S.x * S.z, S.x * S.y) * dIdL;
-        float dWdI = s0 * rcbrtIII,
-              dWdIII = s1 * (1 - rsqrt(III)) - dWdI * I / 3 / III;
-        float3 dWdL = dWdI * dIdL + dWdIII * dIIIdL;
-        return dWdL;
-    };
-
-    switch (modelType)
-    {
-        CALC_STRESS_MODEL_CASE(StVK)
-        CALC_STRESS_MODEL_CASE(neoHookean)
-    default:
-        _calcStress<<<grid_size_tet, 256>>>(d_X, Force, d_Tet, d_inv_Dm, d_det_Dm, tet_number, s0, s1, model_StVK);
-        break;
-    }
+    _calcStress<<<grid_size_tet, 256>>>(d_X, Force, d_Tet, d_inv_Dm, d_det_Dm, tet_number, s0, s1);
     cudaDeviceSynchronize();
 
     _particleUpdate<<<grid_size_vert, 256>>>(d_X, V, Force, number, dt, damp, mass, floorY);
@@ -236,7 +196,7 @@ extern "C"
         cudaDeviceProp device;
         cudaGetDeviceProperties(&device, 0);
         char *label = new char[256];
-        sprintf(label, "(%s) -- %d, %d", modelType == StVK ? "StVK" : "neoHookean", number, tet_number);
+        sprintf(label, "(%s) -- %d, %d", device.name, number, tet_number);
         return label;
     }
 
@@ -255,8 +215,7 @@ extern "C"
     __export__ void Initialize(
         int *Tet, float3x3 *inv_Dm, float *det_Dm,
         int number, int tet_number, bool useGravity, bool laplacianSmoothing,
-        float dt, float s0, float s1, float damp, float mass, float floorY,
-        HyperelasticModelType modelType)
+        float dt, float s0, float s1, float damp, float mass, float floorY)
     {
         cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync);
 
@@ -309,7 +268,6 @@ extern "C"
         ::floorY = floorY;
         ::useGravity = useGravity;
         ::laplacianSmoothing = laplacianSmoothing;
-        ::modelType = modelType;
     }
 
     __export__ void Update(float3 *X, int iteration_number)

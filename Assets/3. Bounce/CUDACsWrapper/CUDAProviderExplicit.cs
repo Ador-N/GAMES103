@@ -18,8 +18,9 @@ public class CUDAProviderExplicit : Singleton<CUDAProviderExplicit>, ICUDAFuncti
     [DllImport("Parallel_Explicit_SVD.dll", EntryPoint = "Initialize")]
     public static unsafe extern void _Initialize(
         int* Tet, float3x3* inv_Dm, float* det_Dm,
-        int number, int tet_number, bool useGravity, bool enableLaplacianSmoothing,
-        float dt, float s0, float s1, float damp, float mass, float floorY = -3);
+        int number, int tet_number, bool useGravity, bool laplacianSmoothing,
+        float dt, float s0, float s1, float damp, float mass, float floorY,
+        HyperelasticModelType hyperelasticModelType);
 
     [DllImport("Parallel_Explicit_SVD.dll", EntryPoint = "Update")]
     public static unsafe extern void __Update(Vector3* X, int iteration_number);
@@ -39,12 +40,14 @@ public class CUDAProviderExplicit : Singleton<CUDAProviderExplicit>, ICUDAFuncti
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public unsafe void Initialize(
         int* Tet, float3x3* inv_Dm, float* det_Dm,
-        int number, int tet_number, bool useGravity, bool enableLaplacianSmoothing,
-        float dt, float s0, float s1, float damp, float mass, float floorY = -3)
+        int number, int tet_number, bool useGravity, bool laplacianSmoothing,
+        float dt, float s0, float s1, float damp, float mass, float floorY,
+        HyperelasticModelType hyperelasticModelType)
         => _Initialize(
             Tet, inv_Dm, det_Dm,
-            number, tet_number, useGravity, enableLaplacianSmoothing,
-            dt, s0, s1, damp, mass, floorY);
+            number, tet_number, useGravity, laplacianSmoothing,
+            dt, s0, s1, damp, mass, floorY,
+            hyperelasticModelType);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public unsafe void _Update(Vector3* X, int iteration_number) => __Update(X, iteration_number);

@@ -22,12 +22,14 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static unsafe void Initialize(
         int* Tet, float3x3* inv_Dm, float* det_Dm,
-        int number, int tet_number, bool useGravity, bool enableLaplacianSmoothing,
-        float dt, float s0, float s1, float damp, float mass, float floorY = -3)
+        int number, int tet_number, bool useGravity, bool laplacianSmoothing,
+        float dt, float s0, float s1, float damp, float mass, float floorY,
+        HyperelasticModelType hyperelasticModelType)
         => provider.Initialize(
             Tet, inv_Dm, det_Dm,
-            number, tet_number, useGravity, enableLaplacianSmoothing,
-            dt, s0, s1, damp, mass, floorY);
+            number, tet_number, useGravity, laplacianSmoothing,
+            dt, s0, s1, damp, mass, floorY,
+            hyperelasticModelType);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static unsafe void _Update(Vector3* X, int iteration_number) => provider._Update(X, iteration_number);
@@ -55,9 +57,10 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
     float3x3[] inv_Dm;
     float[] det_Dm;
 
+    public HyperelasticModelType hyperelasticModelType = HyperelasticModelType.StVK;
     public bool debug = false;
     public bool useGravity = true;
-    public bool enableLaplacianSmoothing = true;
+    public bool laplacianSmoothing = true;
 
     // Start is called before the first frame update
     void Start()
@@ -171,8 +174,9 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
             fixed (float* det_DmPtr = det_Dm)
                 Initialize(
                     TetPtr, inv_DmPtr, det_DmPtr,
-                    number, tet_number, useGravity, enableLaplacianSmoothing,
-                    dt, stiffness_0, stiffness_1, damp, mass, -3);
+                    number, tet_number, useGravity, laplacianSmoothing,
+                    dt, stiffness_0, stiffness_1, damp, mass, -3,
+                    hyperelasticModelType);
         }
 
         // Set fixed delta time.
@@ -208,13 +212,14 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
     void OnGUI()
     {
         if (!debug) return;
+        //caption = Marshal.PtrToStringUTF8(CUDA_device_name());
         unsafe
         {
             fixed (byte* debug_info = this.debug_info)
                 GetDebugInfo(debug_info);
         }
         if (debug_info[0] != 0)
-            caption = System.Text.Encoding.ASCII.GetString(debug_info);
+            caption /*+*/= System.Text.Encoding.ASCII.GetString(debug_info).TrimEnd('\0');
 
         GUILayout.Label(caption, style);
     }

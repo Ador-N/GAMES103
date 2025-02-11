@@ -12,8 +12,9 @@ public interface ICUDAFunctionProvider
 
     abstract unsafe void Initialize(
         int* Tet, float3x3* inv_Dm, float* det_Dm,
-        int number, int tet_number, bool useGravity, bool enableLaplacianSmoothing,
-        float dt, float s0, float s1, float damp, float mass, float floorY = -3);
+        int number, int tet_number, bool useGravity, bool laplacianSmoothing,
+        float dt, float s0, float s1, float damp, float mass, float floorY,
+        HyperelasticModelType hyperelasticModelType);
 
     abstract unsafe void _Update(Vector3* X, int iteration_number);
 
