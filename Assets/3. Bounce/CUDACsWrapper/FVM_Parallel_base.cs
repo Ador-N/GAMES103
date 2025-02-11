@@ -258,6 +258,7 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
         Mesh mesh = GetComponent<MeshFilter>().mesh;
         mesh.vertices = vertices;
         mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
     }
 
     void FixedUpdate()

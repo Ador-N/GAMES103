@@ -283,6 +283,7 @@ public class FVM_Explicit_SVD : MonoBehaviour
 		Mesh mesh = GetComponent<MeshFilter>().mesh;
 		mesh.vertices = vertices;
 		mesh.RecalculateNormals();
+		mesh.RecalculateBounds();
 	}
 
 	void FixedUpdate()

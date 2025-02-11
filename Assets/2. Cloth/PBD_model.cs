@@ -214,6 +214,7 @@ public class PBD_model : MonoBehaviour
 
 		Collision_Handling();
 		mesh.RecalculateNormals();
+		mesh.RecalculateBounds();
 	}
 
 }

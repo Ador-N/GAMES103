@@ -313,6 +313,7 @@ public class implicit_model_parallel : MonoBehaviour
 
 		Collision_Handling();
 		mesh.RecalculateNormals();
+		mesh.RecalculateBounds();
 	}
 
 	void OnDestroy()

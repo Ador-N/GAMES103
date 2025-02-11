@@ -243,5 +243,6 @@ public class implicit_model : MonoBehaviour
 
 		Collision_Handling();
 		mesh.RecalculateNormals();
+		mesh.RecalculateBounds();
 	}
 }

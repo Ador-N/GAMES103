@@ -265,6 +265,7 @@ public class FVM_Explicit_Normal : MonoBehaviour
 		Mesh mesh = GetComponent<MeshFilter>().mesh;
 		mesh.vertices = vertices;
 		mesh.RecalculateNormals();
+		mesh.RecalculateBounds();
 	}
 
 	void FixedUpdate()
