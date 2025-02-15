@@ -3,10 +3,8 @@
 #define __both__ __host__ __device__
 #define __bothinline__ __host__ __device__ __forceinline__
 
-namespace
-{
 #include "printf/printf.hu"
-}
+#include "float3x3.hu"
 
 /*
  * Algebraic operators
@@ -142,6 +140,16 @@ __device__ float3 atomicAdd(float3 *address, float3 val)
     atomicAdd(&address->y, val.y);
     atomicAdd(&address->z, val.z);
     return old;
+}
+
+__device__ float3x3 outer(float3 a, float3 b)
+{
+    return make_float3x3_columns(a.x * b, a.y * b, a.z * b);
+}
+
+__device__ float &at(float3 &a, int i)
+{
+    return (&a.x)[i];
 }
 
 #endif

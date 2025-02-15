@@ -36,6 +36,10 @@ struct float3x3
     float3x3(float m00, float m11, float m22)
         : m00(m00), m11(m11), m22(m22) {}
 
+    __device__
+    float3x3(float s)
+        : m00(s), m11(s), m22(s) {}
+
     __device__ static float3x3 identity()
     {
         return float3x3(1, 1, 1);
@@ -108,6 +112,20 @@ struct float3x3
             -m20, -m21, -m22);
     }
 
+    __device__ float3x3 operator+=(const float3x3 &m)
+    {
+        m00 += m.m00;
+        m01 += m.m01;
+        m02 += m.m02;
+        m10 += m.m10;
+        m11 += m.m11;
+        m12 += m.m12;
+        m20 += m.m20;
+        m21 += m.m21;
+        m22 += m.m22;
+        return *this;
+    }
+
     __device__ float3x3 transpose() const
     {
         return float3x3(
@@ -175,6 +193,11 @@ struct float3x3
         (&m00)[i * 3 + 1] = v.y;
         (&m00)[i * 3 + 2] = v.z;
     }
+
+    __device__ float &operator()(int i, int j)
+    {
+        return (&m00)[i * 3 + j];
+    }
 };
 
 __device__ float3x3 operator*(float s, const float3x3 &m)
@@ -190,6 +213,13 @@ __device__ char *to_string(const float3x3 &m, char *buf)
                        m.m10, m.m11, m.m12,
                        m.m20, m.m21, m.m22);
     return buf + len;
+}
+
+__device__ float3x3 make_float3x3_columns(const float3 &c0, const float3 &c1, const float3 &c2)
+{
+    return float3x3(c0.x, c1.x, c2.x,
+                    c0.y, c1.y, c2.y,
+                    c0.z, c1.z, c2.z);
 }
 
 #endif // FLOAT3X3_H

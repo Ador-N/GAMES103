@@ -185,6 +185,7 @@ GameObject:
   - component: {fileID: 172668226}
   - component: {fileID: 172668227}
   - component: {fileID: 172668228}
+  - component: {fileID: 172668229}
   m_Layer: 0
   m_Name: House
   m_TagString: Untagged
@@ -282,8 +283,26 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   useGravity: 1
-  X: []
 --- !u!114 &172668228
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 172668221}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 507387c6cb088c14d90613a5236ef2c4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  stiffness_0: 20000
+  stiffness_1: 5000
+  damp: 0.99999
+  hyperelasticModelType: 1
+  debug: 0
+  useGravity: 1
+  laplacianSmoothing: 1
+--- !u!114 &172668229
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -292,12 +311,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 172668221}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 507387c6cb088c14d90613a5236ef2c4, type: 3}
+  m_Script: {fileID: 11500000, guid: 31610e13471650c4687aad834ac98bc8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  X: []
-  hyperelasticModelType: 1
-  debug: 0
+  stiffness_0: 20000
+  stiffness_1: 5000
+  damp: 0.99999
+  hyperelasticModelType: 0
+  debug: 1
   useGravity: 1
   laplacianSmoothing: 1
 --- !u!1 &199925082

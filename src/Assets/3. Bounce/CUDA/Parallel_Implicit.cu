@@ -54,6 +54,14 @@ __global__ void _preUpdate(float3 *Force, int number, bool useGravity)
     Force[i] = make_float3(0, -9.81, 0) * useGravity;
 }
 
+__device__ float2 __solve2x2_sym(float l1, float l2, float2 b)
+{
+    float detA = l1 * l1 - l2 * l2;
+    return make_float2(
+        (l1 * b.x - l2 * b.y) / detA,
+        (l1 * b.y - l2 * b.x) / detA);
+}
+
 __global__ void _calcStress(float3 *X, float3 *Force, int *Tet, float3x3 *inv_Dm, float *det_Dm, int tet_number, float s0, float s1)
 {
     int tet = blockIdx.x * blockDim.x + threadIdx.x;
@@ -63,16 +71,25 @@ __global__ void _calcStress(float3 *X, float3 *Force, int *Tet, float3x3 *inv_Dm
     float3x3 F = Build_Edge_Matrix(X, Tet, tet) * inv_Dm[tet];
 
     float3x3 U, V;
-    float3 l;
-    F.svd(U, l, V);
+    float3 L;
+    F.svd(U, L, V);
 
-    float I = sqrMagnitude(l);
-    float3 S = l * l;
-    float3 dWdL = make_float3(
-        0.5f * l.x * (I - 3) * s0 + 2 * l.x * (S.x - 1) * s1,
-        0.5f * l.y * (I - 3) * s0 + 2 * l.y * (S.y - 1) * s1,
-        0.5f * l.z * (I - 3) * s0 + 2 * l.z * (S.z - 1) * s1);
-    float3x3 P = U * float3x3(dWdL) * V.transpose();
+    // Perturb L to avoid instabilities when lambdas are close to each other
+    const float eps = 1e-6;
+    if (L.x - L.y < eps)
+        L.x += eps;
+    if (L.y - L.z < eps)
+        L.y += eps;
+    if (L.x - L.y < eps)
+        L.x += eps;
+
+    float I = sqrMagnitude(L);
+    float3 S = L * L;
+    float3x3 dWdLd = float3x3(
+        0.5f * L.x * (I - 3) * s0 + 2 * L.x * (S.x - 1) * s1,
+        0.5f * L.y * (I - 3) * s0 + 2 * L.y * (S.y - 1) * s1,
+        0.5f * L.z * (I - 3) * s0 + 2 * L.z * (S.z - 1) * s1);
+    float3x3 P = U * dWdLd * V.transpose();
     float3x3 force = (-det_Dm[tet] / 6) * P * inv_Dm[tet].transpose();
 
     // Atomic add
@@ -81,15 +98,66 @@ __global__ void _calcStress(float3 *X, float3 *Force, int *Tet, float3x3 *inv_Dm
     atomicAdd(&Force[Tet[tet * 4 + 2]], force.getColumn(1));
     atomicAdd(&Force[Tet[tet * 4 + 3]], force.getColumn(2));
 
+    float3x3 d2WdL2 = s0 * outer(L, L) + float3x3(0.5f * s0 * (I - 3)) + s1 * float3x3(3 * S - make_float3(1, 1, 1));
+    float3x3 Ld = float3(L), dfmi_dFnl[3][3]; // Where the subscripts are n, l
+
+    float3x3 debug0[3][3], debug1[3][3];
+
+    for (int k = 0; k < 3; k++)
+        for (int l = 0; l < 3; l++)
+        {
+            float3x3 dPdFkl, omegaU, omegaVt;
+
+            // Calculate \frac{\partial\lambda_d}{\partial F_{kl}},
+            // leading to central addend of \frac{\partial f}{\partial F_{kl}}
+            float3x3 Ut_dFdFkl_V = outer(U.getRow(k), V.getRow(l));
+            dPdFkl += float3x3(d2WdL2 * Ut_dFdFkl_V.diag());
+
+            // Calculate U\frac{\partial U}{\partial F_{kl}} and \frac{\partial V^T}{\partial F_{kl}}V,
+            // leading to the first and last addend of \frac{\partial f}{\partial F_{kl}}
+            float2 U_Vt_01 = __solve2x2_sym(L.y, L.x, make_float2(Ut_dFdFkl_V.m01, -Ut_dFdFkl_V.m10));
+            float2 U_Vt_02 = __solve2x2_sym(L.z, L.x, make_float2(Ut_dFdFkl_V.m02, -Ut_dFdFkl_V.m20));
+            float2 U_Vt_12 = __solve2x2_sym(L.z, L.y, make_float2(Ut_dFdFkl_V.m12, -Ut_dFdFkl_V.m21));
+            omegaU.m01 = U_Vt_01.x, omegaVt.m01 = U_Vt_01.y;
+            omegaU.m02 = U_Vt_02.x, omegaVt.m02 = U_Vt_02.y;
+            omegaU.m12 = U_Vt_12.x, omegaVt.m12 = U_Vt_12.y;
+            omegaU += -omegaU.transpose(), omegaVt += -omegaVt.transpose();
+            dPdFkl += omegaU * dWdLd + dWdLd * omegaVt;
+            dPdFkl = U * dPdFkl * V.transpose();
+            debug1[k][l] = dPdFkl;
+
+            // Work out \frac{\partial f}{\partial F_{kl}} and add it to the total derivative
+            dfmi_dFnl[k][l] = (-det_Dm[tet] / 6) * U * dPdFkl * V.transpose() * inv_Dm[tet].transpose();
+            debug0[k][l] = Ut_dFdFkl_V - omegaU * Ld - Ld * omegaVt;
+        }
+
+    // Work out Hessian = (\frac{\vec{f}_i}{\vec{x}_j})_{mn} = \frac{\partial f_{mi}}{\partial F_{nl}} * X^{-T}_{lj}
+    // for all {i, j}s, where i, j are the indices of the vertices of the tetrahedron and m, n are the indices of Hessians
+    // Which means we'd do 9 matrix multiplications to get 9 Hessian blocks.
+    float3x3 Ht[3][3]; // Ht[i][j] = \frac{\vec{f}_i}{\vec{x}_j}
+    for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 3; j++)
+        {
+            float3x3 H;
+            for (int m = 0; m < 3; m++)
+                for (int n = 0; n < 3; n++)
+                {
+                    H(m, n) = dfmi_dFnl[n][0](m, i) * inv_Dm[tet](j, 0)    //
+                              + dfmi_dFnl[n][1](m, i) * inv_Dm[tet](j, 1)  //
+                              + dfmi_dFnl[n][2](m, i) * inv_Dm[tet](j, 2); //
+                }
+            Ht[i][j] = H;
+        }
+
     if (debug_tet_id != -1 && tet == debug_tet_id)
     {
         char *tail = debug_info + strlen_d(debug_info);
-        tail = strcat_d(tail, "inv_Dm: ");
+        /*tail = strcat_d(tail, "inv_Dm: ");
         tail = to_string(inv_Dm[tet], tail);
         tail = strcat_d(tail, "\nF: ");
         tail = to_string(F, tail);
         tail = strcat_d(tail, "\nF - UlVt: ");
-        tail = to_string(F - U * float3x3(l) * V.transpose(), tail);
+        tail = to_string(F - U * float3x3(L) * V.transpose(), tail);
         tail = strcat_d(tail, "\nI: ");
         tail += sprintf_(tail, "%f", I);
         tail = strcat_d(tail, "\nS: ");
@@ -100,7 +168,28 @@ __global__ void _calcStress(float3 *X, float3 *Force, int *Tet, float3x3 *inv_Dm
         tail = to_string(P, tail);
         tail = strcat_d(tail, "\nforce: ");
         tail = to_string(force, tail);
-        tail = strcat_d(tail, "\n");
+        tail = strcat_d(tail, "\n");*/
+        tail = strcat_d(tail, "Ht: \n");
+        for (int i = 0; i < 3; i++)
+            for (int j = 0; j < 3; j++)
+            {
+                tail = to_string(Ht[i][j], tail);
+                tail = strcat_d(tail, "\n");
+            }
+        /*tail = strcat_d(tail, "debug0: \n");
+        for (int i = 0; i < 3; i++)
+            for (int j = 0; j < 3; j++)
+            {
+                tail = to_string(debug0[i][j], tail);
+                tail = strcat_d(tail, "\n");
+            }*/
+        tail = strcat_d(tail, "debug1: \n");
+        for (int i = 0; i < 3; i++)
+            for (int j = 0; j < 3; j++)
+            {
+                tail = to_string(debug1[i][j], tail);
+                tail = strcat_d(tail, "\n");
+            }
         debug_tet_id = -1;
     }
 }

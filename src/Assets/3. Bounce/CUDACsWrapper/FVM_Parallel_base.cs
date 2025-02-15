@@ -16,9 +16,9 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
     int updatesPreFixedUpdate = 10;
     float slowDownFactor = 1;
     float mass = 1;
-    float stiffness_0 = 20000.0f;
-    float stiffness_1 = 5000.0f;
-    float damp = 0.99999f;
+    public float stiffness_0 = 20000.0f;
+    public float stiffness_1 = 5000.0f;
+    public float damp = 0.99999f;
 
     int[] Tet;
     int tet_number;         //The number of tetrahedra
