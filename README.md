@@ -72,7 +72,7 @@ With laplacian smoothing:
 
 ### Extra: Implicit Solver
 
-Implemented according to [[Xu et al. 2018]](https://doi.org/10.1145/2766917).
+Implemented according to [[Xu et al. 2015]](https://doi.org/10.1145/2766917).
 
 Several detail issues remain to be solved...
 
