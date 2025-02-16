@@ -26,7 +26,7 @@ HWs for GAMES103: Physics-Based Animation.
 
 ![FVM-CPU-bang](pics/PBD.gif)
 
-## Lab 3 - Bouncy House (Elasticbody FVM)
+## Lab 3 - Bouncy House (Elasticbody Explicit FVM)
 
 ### Method 1. FVM with Green Strain
 
@@ -69,6 +69,14 @@ Without laplacian smoothing:
 With laplacian smoothing:
 
 ![FVM-GPU-neoHookean-noLaplacian](pics/FVM-GPU-neoHookean-clipped.gif)
+
+### Extra: Implicit Solver
+
+Implemented according to [[Xu et al. 2018]](https://doi.org/10.1145/2766917).
+
+Several detail issues remain to be solved...
+
+![FVM-GPU-Implicit](pics/FVM-GPU-Implicit.png)
 
 ## Lab 4 - Pool Ripples (Shallow Wave)
 
