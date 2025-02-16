@@ -9,12 +9,12 @@ using System.Runtime.InteropServices;
 
 public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T>, ICUDAFunctionProvider, new()
 {
-    static ICUDAFunctionProvider provider = Singleton<T>.Instance;
-    byte[] debug_info = new byte[2048];
+    protected static ICUDAFunctionProvider provider = Singleton<T>.Instance;
+    byte[] debug_info = new byte[20480];
     string caption;
-    float dt = 0.0005f;
-    int updatesPreFixedUpdate = 10;
-    float slowDownFactor = 1;
+    public float dt = 0.0005f;
+    protected int updatesPerFixedUpdate = 10;
+    public float slowDownFactor = 1;
     float mass = 1;
     public float stiffness_0 = 20000.0f;
     public float stiffness_1 = 5000.0f;
@@ -23,7 +23,7 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
     int[] Tet;
     int tet_number;         //The number of tetrahedra
 
-    /*public */
+    public
     Vector3[] X;
     int number;             //The number of vertices
 
@@ -36,7 +36,7 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
     public bool laplacianSmoothing = true;
 
     // Start is called before the first frame update
-    void Start()
+    protected void Start()
     {
 #if !DEBUG_SINGLE_TETRAHEDRON
         // FILO IO: Read the house model from files.
@@ -87,10 +87,10 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
 
         number = 4;
         X = new Vector3[number];
-        X[0] = new Vector3(0, 0, 0);
-        X[1] = new Vector3(1, 0, 0);
-        X[2] = new Vector3(0, 1, 0);
-        X[3] = new Vector3(0, 0, 1);
+        X[0] = new Vector3(0, 1, 0);
+        X[1] = new Vector3(0, 0, 1);
+        X[2] = new Vector3(0, 0, 0);
+        X[3] = new Vector3(1, 0, 0);
 
 #endif
 
@@ -153,7 +153,7 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
         }
 
         // Set fixed delta time.
-        Time.fixedDeltaTime = updatesPreFixedUpdate * dt * slowDownFactor;
+        Time.fixedDeltaTime = updatesPerFixedUpdate * dt * slowDownFactor;
 
         style = new GUIStyle()
         {
@@ -164,7 +164,8 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
             font = Font.CreateDynamicFontFromOSFont("Source Code Pro", 15),
         };
 
-        provider.SetLaplacianOmega(0.5f);
+        //try { provider.SetLaplacianOmega(0.5f); }
+        //catch (EntryPointNotFoundException) { }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -209,7 +210,7 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
         // Jump up.
         if (Input.GetKeyDown(KeyCode.Space)/* || Input.GetMouseButtonDown(0)*/)
         {
-            provider.Impulse(new Vector3(0, 5f, 0));
+            provider.Impulse(new Vector3(0, -1f, 0));
         }
 
         // Dump the vertex array for rendering.
@@ -236,14 +237,14 @@ public abstract class FVM_Parallel_base<T> : MonoBehaviour where T : Singleton<T
         mesh.RecalculateBounds();
     }
 
-    void FixedUpdate()
+    protected virtual void FixedUpdate()
     {
         if (debug)
             provider.SetDebugTet(0);
         unsafe
         {
             fixed (Vector3* xPtr = X)
-                provider._Update(xPtr, updatesPreFixedUpdate);
+                provider._Update(xPtr, updatesPerFixedUpdate);
         }
     }
 }

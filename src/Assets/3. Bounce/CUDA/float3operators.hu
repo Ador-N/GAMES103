@@ -55,6 +55,11 @@ __bothinline__ float3 operator*(float3 a, float3 b)
     return make_float3(a.x * b.x, a.y * b.y, a.z * b.z);
 }
 
+__bothinline__ float3 operator/(float3 a, float3 b)
+{
+    return make_float3(a.x / b.x, a.y / b.y, a.z / b.z);
+}
+
 __bothinline__ float3 operator*=(float3 &a, float b)
 {
     a.x *= b;
@@ -114,7 +119,11 @@ __bothinline__ float3 normalize(float3 a)
 
 __bothinline__ char *to_string(float3 a, char *buffer)
 {
+#ifdef __CUDA_ARCH__
     int size = sprintf_(buffer, "(%f, %f, %f)", a.x, a.y, a.z);
+#else
+    int size = sprintf(buffer, "(%f, %f, %f)", a.x, a.y, a.z);
+#endif
     return buffer;
 }
 
@@ -150,6 +159,11 @@ __device__ float3x3 outer(float3 a, float3 b)
 __device__ float &at(float3 &a, int i)
 {
     return (&a.x)[i];
+}
+
+__device__ float3 clampComponents(float3 a, float min)
+{
+    return make_float3(fmaxf(a.x, min), fmaxf(a.y, min), fmaxf(a.z, min));
 }
 
 #endif

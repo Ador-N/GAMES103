@@ -222,4 +222,19 @@ __device__ float3x3 make_float3x3_columns(const float3 &c0, const float3 &c1, co
                     c0.z, c1.z, c2.z);
 }
 
+__device__ float3x3 atomicAdd(float3x3 *address, float3x3 val)
+{
+    float3x3 old = *address;
+    atomicAdd(&address->m00, val.m00);
+    atomicAdd(&address->m01, val.m01);
+    atomicAdd(&address->m02, val.m02);
+    atomicAdd(&address->m10, val.m10);
+    atomicAdd(&address->m11, val.m11);
+    atomicAdd(&address->m12, val.m12);
+    atomicAdd(&address->m20, val.m20);
+    atomicAdd(&address->m21, val.m21);
+    atomicAdd(&address->m22, val.m22);
+    return old;
+}
+
 #endif // FLOAT3X3_H

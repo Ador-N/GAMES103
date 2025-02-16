@@ -295,10 +295,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 507387c6cb088c14d90613a5236ef2c4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  dt: 0.0005
+  slowDownFactor: 1
   stiffness_0: 20000
   stiffness_1: 5000
   damp: 0.99999
-  hyperelasticModelType: 1
+  X: []
+  hyperelasticModelType: 0
   debug: 0
   useGravity: 1
   laplacianSmoothing: 1
@@ -314,13 +317,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 31610e13471650c4687aad834ac98bc8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  dt: 0.002
+  slowDownFactor: 10
   stiffness_0: 20000
   stiffness_1: 5000
   damp: 0.99999
+  X: []
   hyperelasticModelType: 0
   debug: 1
   useGravity: 1
-  laplacianSmoothing: 1
+  laplacianSmoothing: 0
+  iterationsPerFixedUpdate: 32
 --- !u!1 &199925082
 GameObject:
   m_ObjectHideFlags: 0
